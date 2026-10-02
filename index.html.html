@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fechamento de Vendas • BI</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#050b1a;--card:#0c1730;--card2:#10203f;--line:#1c3260;--tx:#e6efff;--mut:#8aa4d6;--pri:#3b82f6;--pri2:#60a5fa;
+--red:#ef4444;--org:#f97316;--yel:#facc15;--blu:#3b82f6;--grn:#22c55e;--sup:#2dd4bf}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(1200px 600px at 10% -10%,#0f2a63 0,transparent 60%),var(--bg);color:var(--tx);font-family:Segoe UI,Roboto,Arial,sans-serif;min-height:100vh}
+.wrap{max-width:1400px;margin:0 auto;padding:20px}
+header{display:flex;flex-wrap:wrap;gap:14px;align-items:center;justify-content:space-between;margin-bottom:18px}
+h1{margin:0;font-size:22px}
+.sub{color:var(--mut);font-size:14px;margin-top:4px}
+.chip{display:inline-block;background:linear-gradient(135deg,#1d4ed8,#3b82f6);padding:4px 12px;border-radius:99px;font-size:13px;font-weight:600;margin-left:8px;text-transform:capitalize}
+.btn{background:var(--pri);color:#fff;border:0;padding:10px 18px;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px}
+.btn:hover{background:#2563eb}.btn.ghost{background:var(--card2);border:1px solid var(--line);color:var(--tx)}
+#drop{border:2px dashed var(--line);border-radius:16px;padding:60px 20px;text-align:center;background:var(--card);color:var(--mut)}
+#drop.over{border-color:var(--pri2);background:var(--card2)}
+#drop b{color:var(--tx);font-size:18px;display:block;margin-bottom:8px}
+#app{display:none}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tab{background:var(--card);border:1px solid var(--line);color:var(--mut);padding:9px 16px;border-radius:10px;cursor:pointer;font-weight:600;font-size:14px}
+.tab.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.filters{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:16px}
+.filters label{font-size:12px;color:var(--mut);display:block;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.filters input,.filters select{width:100%;background:#071026;border:1px solid var(--line);color:var(--tx);padding:8px 10px;border-radius:8px;font-size:14px}
+.rng{display:flex;gap:6px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin-bottom:16px}
+.kpi{background:linear-gradient(160deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:14px;padding:16px}
+.kpi small{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.kpi div{font-size:30px;font-weight:700;margin-top:6px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;min-width:0}
+.card h3{margin:0 0 10px;font-size:15px;color:var(--pri2)}
+.scroll{max-height:640px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{position:sticky;top:0;background:#0a1a3a;color:var(--pri2);text-align:left;padding:10px;cursor:pointer;user-select:none;white-space:nowrap}
+td{padding:9px 10px;border-top:1px solid var(--line)}
+tr:hover td{background:#0e1f42}
+td.n,th.n{text-align:center}
+.badge{display:inline-block;min-width:64px;text-align:center;padding:4px 10px;border-radius:99px;font-weight:700;font-size:13px;color:#fff}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--mut);margin-bottom:14px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+@media print{.noprint{display:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div>
+    <h1 id="titulo">Fechamento de Vendas <span class="chip" id="periodo" style="display:none"></span></h1>
+    <div class="sub" id="subtitulo">Anexe a planilha de fechamento para gerar o painel</div>
+  </div>
+  <div class="noprint" style="display:flex;gap:8px">
+    <button class="btn ghost" id="btnPrint" style="display:none" onclick="window.print()">Imprimir / PDF</button>
+    <button class="btn" onclick="document.getElementById('file').click()">Anexar planilha</button>
+    <input type="file" id="file" accept=".xlsx,.xls,.xlsm,.csv" hidden>
+  </div>
+</header>
+
+<div id="drop"><b>Arraste a planilha aqui</b>ou clique em "Anexar planilha" (.xlsx / .xls)</div>
+
+<div id="app">
+  <div class="tabs noprint" id="tabs"></div>
+  <div class="filters noprint">
+    <div><label>Empresa (busca)</label><input id="fEmp" placeholder="Digite o nome..."></div>
+    <div><label>Empresa (seleção)</label><select id="fEmpSel"></select></div>
+    <div><label>Veículos vendidos</label><div class="rng"><input id="vMin" type="number" placeholder="mín"><input id="vMax" type="number" placeholder="máx"></div></div>
+    <div><label>Seguros vendidos</label><div class="rng"><input id="sMin" type="number" placeholder="mín"><input id="sMax" type="number" placeholder="máx"></div></div>
+    <div><label>Aproveitamento (%)</label><div class="rng"><input id="aMin" type="number" placeholder="mín"><input id="aMax" type="number" placeholder="máx"></div></div>
+    <div><label>Faixa de aproveitamento</label><select id="fFaixa"></select></div>
+    <div style="align-self:end"><button class="btn ghost" style="width:100%" onclick="limpar()">Limpar filtros</button></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--red)"></i>0%</span><span><i style="background:var(--org)"></i>1 a 5%</span>
+    <span><i style="background:var(--yel)"></i>6 a 10%</span><span><i style="background:var(--blu)"></i>11 a 14%</span>
+    <span><i style="background:var(--grn)"></i>15 a 30%</span><span><i style="background:var(--sup)"></i>31% ou mais: Objetivo Superado</span>
+  </div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="grid">
+    <div class="card"><h3>Aproveitamento por empresa</h3><div id="w1" style="position:relative"><canvas id="c1"></canvas></div></div>
+    <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+      <div class="card"><h3>Distribuição por faixa</h3><div style="height:260px;position:relative"><canvas id="c3"></canvas></div></div>
+      <div class="card"><h3>Veículos x Seguros (Top 10)</h3><div style="height:320px;position:relative"><canvas id="c2"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="card"><h3>Detalhamento (clique no cabeçalho para ordenar)</h3>
+    <div class="scroll"><table><thead id="thead"></thead><tbody id="tbody"></tbody></table></div>
+  </div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const COR={red:'#ef4444',org:'#f97316',yel:'#facc15',blu:'#3b82f6',grn:'#22c55e',sup:'#2dd4bf'};
+const FAIXAS=[['0%','red'],['1 a 5%','org'],['6 a 10%','yel'],['11 a 14%','blu'],['15 a 30%','grn'],['Objetivo Superado','sup']];
+function faixa(p){p=Math.round(p);return p<=0?0:p<=5?1:p<=10?2:p<=14?3:p<=30?4:5}
+const corDe=p=>COR[FAIXAS[faixa(p)][1]];
+const txtDe=p=>faixa(p)===5?'Objetivo Superado':Math.round(p)+'%';
+const fmt=n=>Number(n).toLocaleString('pt-BR');
+
+let DATA=[],ABAS={},abaSel='__all',sortK='empresa',sortD=1,charts={};
+
+/* ---------- leitura ---------- */
+function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')}
+function lerArquivo(f){
+  const r=new FileReader();
+  r.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:'array'});
+    DATA=[];ABAS={};
+    wb.SheetNames.forEach(nome=>{
+      const ws=wb.Sheets[nome];
+      const rows=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:null});
+      let h=rows.findIndex(r=>r.some(c=>norm(c)==='empresa'));
+      if(h<0)return;
+      let titulo='';
+      for(let i=0;i<h&&!titulo;i++){const c=rows[i].find(x=>typeof x==='string'&&x.trim());if(c)titulo=c.trim()}
+      const col={};
+      rows[h].forEach((c,i)=>{const n=norm(c);
+        if(n==='empresa')col.e=i;else if(n.includes('veic'))col.v=i;else if(n.includes('seguro'))col.s=i;else if(n.includes('aproveit'))col.a=i});
+      ABAS[nome]=titulo;
+      for(let i=h+1;i<rows.length;i++){
+        const r=rows[i],emp=r[col.e];
+        if(!emp||/^total/i.test(String(emp).trim()))continue;
+        const v=Number(r[col.v])||0,s=Number(r[col.s])||0;
+        let a=null;
+        if(col.a!=null){
+          const cell=ws[XLSX.utils.encode_cell({r:i,c:col.a})];
+          if(cell&&cell.v!=null&&cell.v!==''){
+            if(cell.t==='n'){a=(cell.z&&String(cell.z).includes('%'))?cell.v*100:(cell.v<1&&cell.v>0?cell.v*100:cell.v)}
+            else a=parseFloat(String(cell.v).replace('%','').replace(',','.'));
+          }
+        }
+        if(a==null||isNaN(a))a=v?s/v*100:0;
+        DATA.push({aba:nome,empresa:String(emp).trim(),veic:v,seg:s,apr:Math.round(a)});
+      }
+    });
+    if(!DATA.length){alert('Não encontrei a coluna "Empresa" na planilha.');return}
+    iniciar();
+  };
+  r.readAsArrayBuffer(f);
+}
+
+function iniciar(){
+  $('drop').style.display='none';$('app').style.display='block';$('btnPrint').style.display='';
+  abaSel='__all';
+  const nomes=Object.keys(ABAS);
+  $('tabs').innerHTML='<button class="tab on" data-a="__all">Todas as abas</button>'+nomes.map(n=>`<button class="tab" data-a="${n}">${n}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{abaSel=b.dataset.a;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===b));popEmp();render()});
+  $('fFaixa').innerHTML='<option value="">Todas</option>'+FAIXAS.map((f,i)=>`<option value="${i}">${f[0]}</option>`).join('');
+  popEmp();limpar(true);render();
+}
+function popEmp(){
+  const lista=[...new Set(DATA.filter(d=>abaSel==='__all'||d.aba===abaSel).map(d=>d.empresa))].sort();
+  $('fEmpSel').innerHTML='<option value="">Todas</option>'+lista.map(e=>`<option>${e}</option>`).join('');
+}
+function limpar(q){
+  ['fEmp','fEmpSel','vMin','vMax','sMin','sMax','aMin','aMax','fFaixa'].forEach(i=>$(i).value='');
+  if(!q)render();
+}
+['fEmp','fEmpSel','vMin','vMax','sMin','sMax','aMin','aMax','fFaixa'].forEach(i=>{$(i).addEventListener('input',()=>render())});
+
+/* ---------- filtros ---------- */
+function filtrados(){
+  const t=norm($('fEmp').value),es=$('fEmpSel').value,fx=$('fFaixa').value;
+  const n=id=>$(id).value===''?null:Number($(id).value);
+  const vm=n('vMin'),vM=n('vMax'),sm=n('sMin'),sM=n('sMax'),am=n('aMin'),aM=n('aMax');
+  return DATA.filter(d=>
+    (abaSel==='__all'||d.aba===abaSel)&&
+    (!t||norm(d.empresa).includes(t))&&(!es||d.empresa===es)&&
+    (vm==null||d.veic>=vm)&&(vM==null||d.veic<=vM)&&
+    (sm==null||d.seg>=sm)&&(sM==null||d.seg<=sM)&&
+    (am==null||d.apr>=am)&&(aM==null||d.apr<=aM)&&
+    (fx===''||faixa(d.apr)===Number(fx)));
+}
+
+/* ---------- render ---------- */
+function cabecalho(){
+  const ts=abaSel==='__all'?Object.values(ABAS):[ABAS[abaSel]];
+  const t=[...new Set(ts.filter(Boolean))];
+  $('titulo').firstChild.textContent=(t.length?t.join('  •  '):'Fechamento de Vendas')+' ';
+  const m=(t.join(' ')).match(/(janeiro|fevereiro|mar[cç]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s*(?:de|\/|-)?\s*(\d{4})/i);
+  $('periodo').style.display=m?'':'none';
+  if(m)$('periodo').textContent=m[1]+' / '+m[2];
+  $('subtitulo').textContent='Aba: '+(abaSel==='__all'?'todas':abaSel);
+}
+function render(){
+  cabecalho();
+  const d=filtrados();
+  const V=d.reduce((a,x)=>a+x.veic,0),S=d.reduce((a,x)=>a+x.seg,0),G=V?S/V*100:0;
+  const ok=d.filter(x=>x.apr>=15).length,zero=d.filter(x=>x.apr===0).length;
+  $('kpis').innerHTML=
+   `<div class="kpi"><small>Empresas</small><div>${fmt(d.length)}</div></div>
+    <div class="kpi"><small>Veículos vendidos</small><div>${fmt(V)}</div></div>
+    <div class="kpi"><small>Seguros vendidos</small><div>${fmt(S)}</div></div>
+    <div class="kpi"><small>Aproveitamento geral</small><div style="color:${corDe(G)};font-size:${faixa(G)===5?'20px':'30px'}">${txtDe(G)}</div></div>
+    <div class="kpi"><small>Empresas ≥ 15%</small><div style="color:var(--grn)">${ok}</div></div>
+    <div class="kpi"><small>Empresas com 0%</small><div style="color:var(--red)">${zero}</div></div>`;
+  tabela(d);graficos(d);
+}
+function tabela(d){
+  const cols=[['empresa','Empresa',''],['aba','Aba',''],['veic','Veículos vendidos','n'],['seg','Seguros vendidos','n'],['apr','Aproveitamento','n']];
+  $('thead').innerHTML='<tr>'+cols.map(c=>`<th class="${c[2]}" data-k="${c[0]}">${c[1]}${sortK===c[0]?(sortD>0?' ▲':' ▼'):''}</th>`).join('')+'</tr>';
+  document.querySelectorAll('#thead th').forEach(th=>th.onclick=()=>{const k=th.dataset.k;sortD=sortK===k?-sortD:1;sortK=k;render()});
+  const s=[...d].sort((a,b)=>{const x=a[sortK],y=b[sortK];return (typeof x==='string'?x.localeCompare(y,'pt'):x-y)*sortD});
+  $('tbody').innerHTML=s.map(x=>`<tr><td>${x.empresa}</td><td style="color:var(--mut)">${x.aba}</td><td class="n">${fmt(x.veic)}</td><td class="n">${fmt(x.seg)}</td><td class="n"><span class="badge" style="background:${corDe(x.apr)};${faixa(x.apr)===2?'color:#1a1400':''}">${txtDe(x.apr)}</span></td></tr>`).join('')
+   ||'<tr><td colspan="5" style="text-align:center;color:var(--mut)">Nenhum resultado com os filtros atuais</td></tr>';
+}
+function graficos(d){
+  Object.values(charts).forEach(c=>c.destroy());
+  Chart.defaults.color='#8aa4d6';Chart.defaults.borderColor='#1c3260';
+  const s=[...d].sort((a,b)=>b.apr-a.apr||b.veic-a.veic);
+  $('w1').style.height=Math.max(220,s.length*24+50)+'px';
+  const rotulo={id:'rot',afterDatasetsDraw(ch){
+    const {ctx}=ch,m=ch.getDatasetMeta(0);ctx.save();ctx.font='bold 12px Segoe UI';ctx.textBaseline='middle';
+    m.data.forEach((b,i)=>{const p=s[i].apr;ctx.fillStyle=corDe(p);ctx.fillText(txtDe(p),b.x+6,b.y)});ctx.restore()}};
+  const mx=Math.max(10,...s.map(x=>x.apr));
+  charts.c1=new Chart($('c1'),{type:'bar',plugins:[rotulo],data:{labels:s.map(x=>x.empresa),datasets:[{data:s.map(x=>x.apr),backgroundColor:s.map(x=>corDe(x.apr)),borderRadius:4,barPercentage:.75}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,layout:{padding:{right:120}},
+      scales:{x:{max:Math.ceil(mx*1.05),ticks:{callback:v=>v+'%'}},y:{ticks:{autoSkip:false,font:{size:11}}}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+txtDe(c.raw)+' ('+c.raw+'%)'}}}}});
+  const t=[...d].sort((a,b)=>b.veic-a.veic).slice(0,10);
+  charts.c2=new Chart($('c2'),{type:'bar',data:{labels:t.map(x=>x.empresa),datasets:[
+    {label:'Veículos',data:t.map(x=>x.veic),backgroundColor:'#3b82f6',borderRadius:3},
+    {label:'Seguros',data:t.map(x=>x.seg),backgroundColor:'#60a5fa55',borderColor:'#93c5fd',borderWidth:1,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{font:{size:10}}}},plugins:{legend:{position:'bottom'}}}});
+  const cont=FAIXAS.map((_,i)=>d.filter(x=>faixa(x.apr)===i).length);
+  charts.c3=new Chart($('c3'),{type:'doughnut',data:{labels:FAIXAS.map(f=>f[0]),datasets:[{data:cont,backgroundColor:FAIXAS.map(f=>COR[f[1]]),borderColor:'#0c1730',borderWidth:3}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{boxWidth:12,font:{size:11}}}}}});
+}
+
+/* ---------- upload ---------- */
+$('file').onchange=e=>e.target.files[0]&&lerArquivo(e.target.files[0]);
+const dz=$('drop');
+dz.onclick=()=>$('file').click();
+['dragover','dragenter'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>dz.addEventListener(ev,e=>{e.preventDefault();dz.classList.remove('over')}));
+dz.addEventListener('drop',e=>e.dataTransfer.files[0]&&lerArquivo(e.dataTransfer.files[0]));
+</script>
+</body>
+</html>
